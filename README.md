@@ -56,7 +56,7 @@ Se optó por una arquitectura de microservicios. El sistema se divide en servici
 
 ## Diagrama de arquitectura
 
-![Diagrama de arquitectura](anexos/diagrama-arquitectura.png)
+![Diagrama de arquitectura](imagen%20Diagrama%20ms.png)
 
 El archivo editable del diagrama de arquitectura se encuentra en la carpeta `anexos`.
 
