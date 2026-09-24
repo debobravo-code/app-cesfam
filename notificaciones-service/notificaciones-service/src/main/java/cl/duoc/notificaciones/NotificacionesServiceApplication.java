@@ -1,13 +1,25 @@
-package cl.duoc.notificaciones;
 
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
+package cl.duoc.presenciadisponibilidad.config;
 
-@SpringBootApplication
-public class NotificacionesServiceApplication {
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.web.SecurityFilterChain;
 
-	public static void main(String[] args) {
-		SpringApplication.run(NotificacionesServiceApplication.class, args);
+@Configuration
+public class SecurityConfig {
+
+	@Bean
+	public SecurityFilterChain securityFilterChain(
+			HttpSecurity http) throws Exception {
+
+		http
+				.csrf(csrf -> csrf.disable())
+				.authorizeHttpRequests(auth ->
+						auth.anyRequest().authenticated()
+				)
+				.httpBasic(basic -> {});
+
+		return http.build();
 	}
-
 }
