@@ -24,7 +24,9 @@ public class PresenciaDisponibilidadService {
         return repository.findById(id);
     }
 
-    public PresenciaDisponibilidad guardar(PresenciaDisponibilidad presenciaDisponibilidad) {
+    public PresenciaDisponibilidad guardar(
+            PresenciaDisponibilidad presenciaDisponibilidad) {
+
         return repository.save(presenciaDisponibilidad);
     }
 
@@ -32,11 +34,24 @@ public class PresenciaDisponibilidadService {
             Long id,
             PresenciaDisponibilidad presenciaDisponibilidad) {
 
+        if (!repository.existsById(id)) {
+            throw new IllegalArgumentException(
+                    "Registro de presencia no encontrado"
+            );
+        }
+
         presenciaDisponibilidad.setId(id);
         return repository.save(presenciaDisponibilidad);
     }
 
     public void eliminar(Long id) {
+
+        if (!repository.existsById(id)) {
+            throw new IllegalArgumentException(
+                    "Registro de presencia no encontrado"
+            );
+        }
+
         repository.deleteById(id);
     }
 }

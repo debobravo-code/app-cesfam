@@ -2,6 +2,7 @@ package cl.duoc.presenciadisponibilidad.controller;
 
 import cl.duoc.presenciadisponibilidad.model.PresenciaDisponibilidad;
 import cl.duoc.presenciadisponibilidad.service.PresenciaDisponibilidadService;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -31,14 +32,16 @@ public class PresenciaDisponibilidadController {
 
     @PostMapping
     public PresenciaDisponibilidad crear(
-            @RequestBody PresenciaDisponibilidad presenciaDisponibilidad) {
+            @Valid @RequestBody PresenciaDisponibilidad presenciaDisponibilidad) {
+
         return service.guardar(presenciaDisponibilidad);
     }
 
     @PutMapping("/{id}")
     public PresenciaDisponibilidad actualizar(
             @PathVariable Long id,
-            @RequestBody PresenciaDisponibilidad presenciaDisponibilidad) {
+            @Valid @RequestBody PresenciaDisponibilidad presenciaDisponibilidad) {
+
         return service.actualizar(id, presenciaDisponibilidad);
     }
 
