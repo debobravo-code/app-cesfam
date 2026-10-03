@@ -25,16 +25,36 @@ public class FuncionarioService {
     }
 
     public Funcionario guardarFuncionario(Funcionario funcionario) {
+
+        if (funcionarioRepository.existsByRut(funcionario.getRut())) {
+            throw new IllegalArgumentException(
+                    "Ya existe un funcionario con el RUT ingresado"
+            );
+        }
+
         return funcionarioRepository.save(funcionario);
     }
 
     public Funcionario actualizarFuncionario(Long id, Funcionario funcionario) {
+
+        if (!funcionarioRepository.existsById(id)) {
+            throw new IllegalArgumentException(
+                    "Funcionario no encontrado"
+            );
+        }
+
         funcionario.setId(id);
         return funcionarioRepository.save(funcionario);
     }
 
     public void eliminarFuncionario(Long id) {
+
+        if (!funcionarioRepository.existsById(id)) {
+            throw new IllegalArgumentException(
+                    "Funcionario no encontrado"
+            );
+        }
+
         funcionarioRepository.deleteById(id);
     }
 }
-
