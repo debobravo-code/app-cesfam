@@ -1,10 +1,10 @@
 # App Interna CESFAM
 
-## Arquitectura de Microservicios
+## Descripción del proyecto
 
-Aplicación orientada a la gestión interna de funcionarios de un CESFAM. Su propósito es facilitar la consulta de funcionarios, su presencia y disponibilidad, la gestión de vehículos en el estacionamiento y el envío de notificaciones internas.
+Aplicación orientada a la gestión interna de funcionarios de un CESFAM. Su propósito es facilitar la administración de funcionarios, consultar su presencia y disponibilidad, gestionar vehículos asociados al estacionamiento y administrar notificaciones internas.
 
-El sistema está desarrollado utilizando una arquitectura basada en microservicios, donde cada servicio posee una responsabilidad específica y su propia base de datos.
+El sistema está desarrollado utilizando una arquitectura basada en microservicios, donde cada servicio posee una responsabilidad específica y utiliza su propia base de datos.
 
 Proyecto desarrollado para la asignatura **JVY0101 – Java: Diseño y Construcción de Soluciones Nativas en Nube**.
 
@@ -21,49 +21,58 @@ Proyecto desarrollado para la asignatura **JVY0101 – Java: Diseño y Construcc
 
 En un CESFAM trabajan funcionarios de distintas áreas y sectores, lo que puede dificultar conocer rápidamente quién es cada funcionario, su estado de disponibilidad o cómo contactar al propietario de un vehículo cuando se requiere gestionar una situación relacionada con el estacionamiento.
 
-La aplicación busca apoyar estos procesos internos mediante servicios independientes para la gestión de funcionarios, presencia y disponibilidad, estacionamiento y notificaciones.
+La aplicación busca apoyar estos procesos internos mediante servicios independientes para:
 
-La aplicación **no reemplaza los sistemas clínicos existentes ni administra información clínica de pacientes**. Su alcance corresponde exclusivamente a procesos internos relacionados con funcionarios del establecimiento.
+- Gestión de funcionarios.
+- Presencia y disponibilidad.
+- Gestión de estacionamiento.
+- Notificaciones internas.
+
+La aplicación **no reemplaza los sistemas clínicos existentes ni administra información clínica de pacientes**. Su alcance corresponde a procesos internos relacionados con funcionarios del establecimiento.
 
 ---
 
 ## Arquitectura
 
-El proyecto utiliza una **arquitectura de microservicios**, separando las principales funcionalidades de la aplicación en cuatro servicios independientes.
+El proyecto utiliza una **arquitectura de microservicios**, separando las funcionalidades principales en cuatro servicios independientes.
 
 Actualmente se encuentran implementados:
 
 1. Gestión de Funcionarios.
 2. Presencia y Disponibilidad.
-3. Gestión de Estacionamiento.
-4. Notificaciones.
+3. Notificaciones.
+4. Gestión de Estacionamiento.
 
-Cada microservicio utiliza una base de datos MySQL independiente y expone servicios REST para realizar sus operaciones.
+Cada microservicio expone endpoints REST para realizar sus operaciones y utiliza persistencia mediante Spring Data JPA y MySQL.
+
+Los cuatro microservicios se encuentran integrados actualmente en la rama `main` del repositorio.
 
 ---
 
 ## Microservicios
 
-| Microservicio | Puerto | Base de datos | Responsabilidad |
+| Microservicio | Puerto | Base de datos | Endpoint principal |
 |---|---:|---|---|
-| Gestión de Funcionarios | `8081` | `cesfam_interno_db` | Administración de los datos de los funcionarios |
-| Presencia y Disponibilidad | `8082` | `presencia_disponibilidad_db` | Administración del estado y disponibilidad de los funcionarios |
-| Notificaciones | `8083` | `notificaciones_db` | Creación y administración de notificaciones internas |
-| Gestión de Estacionamiento | `8084` | `estacionamiento_db` | Registro y administración de vehículos asociados a funcionarios |
+| Gestión de Funcionarios | `8081` | `cesfam_interno_db` | `/api/funcionarios` |
+| Presencia y Disponibilidad | `8082` | `presencia_disponibilidad_db` | `/api/presencia-disponibilidad` |
+| Notificaciones | `8083` | `notificaciones_db` | `/api/notificaciones` |
+| Gestión de Estacionamiento | `8084` | `estacionamiento_db` | `/api/vehiculos` |
 
 ---
 
 ## Tecnologías utilizadas
 
-- Java 21
+- Java
 - Spring Boot
 - Spring Web
 - Spring Data JPA
+- Hibernate
 - Spring Security
 - Jakarta Validation
 - Lombok
 - MySQL
 - Maven
+- Maven Wrapper
 - IntelliJ IDEA
 - Postman
 - Git
@@ -93,126 +102,174 @@ app-cesfam/
 └── README.md
 ```
 
+Cada carpeta interna de los microservicios contiene su respectivo archivo `pom.xml` y Maven Wrapper.
+
 ---
 
-## Gestión de Funcionarios
+# Microservicios implementados
+
+## 1. Gestión de Funcionarios
 
 **Puerto:** `8081`
 
 **Base de datos:** `cesfam_interno_db`
 
-Endpoint principal:
+**Endpoint principal:**
 
 ```text
 /api/funcionarios
 ```
 
-Operaciones implementadas:
+### Operaciones
 
-- `GET` — listar funcionarios.
-- `GET /{id}` — buscar un funcionario.
-- `POST` — crear un funcionario.
-- `PUT /{id}` — actualizar un funcionario.
-- `DELETE /{id}` — eliminar un funcionario.
+- `GET /api/funcionarios` — listar funcionarios.
+- `GET /api/funcionarios/{id}` — buscar un funcionario.
+- `POST /api/funcionarios` — crear un funcionario.
+- `PUT /api/funcionarios/{id}` — actualizar un funcionario.
+- `DELETE /api/funcionarios/{id}` — eliminar un funcionario.
 
-El servicio incluye validaciones para campos obligatorios y control de RUT duplicado.
+El servicio incorpora validaciones para los campos obligatorios y control de RUT duplicado al registrar funcionarios.
 
-También se manejan respuestas de error, incluyendo:
-
-- `400 Bad Request` para datos inválidos o RUT duplicado.
-- `404 Not Found` cuando el funcionario solicitado no existe.
+También maneja respuestas de error para solicitudes inválidas y registros inexistentes.
 
 ---
 
-## Presencia y Disponibilidad
+## 2. Presencia y Disponibilidad
 
 **Puerto:** `8082`
 
 **Base de datos:** `presencia_disponibilidad_db`
 
-Endpoint principal:
+**Endpoint principal:**
 
 ```text
 /api/presencia-disponibilidad
 ```
 
-Operaciones implementadas:
+### Operaciones
 
-- `GET` — listar registros.
-- `GET /{id}` — buscar un registro.
-- `POST` — crear un registro.
-- `PUT /{id}` — actualizar un registro.
-- `DELETE /{id}` — eliminar un registro.
+- `GET /api/presencia-disponibilidad` — listar registros.
+- `GET /api/presencia-disponibilidad/{id}` — buscar un registro.
+- `POST /api/presencia-disponibilidad` — crear un registro.
+- `PUT /api/presencia-disponibilidad/{id}` — actualizar un registro.
+- `DELETE /api/presencia-disponibilidad/{id}` — eliminar un registro.
 
-El servicio valida datos obligatorios, como el identificador del funcionario y su estado.
+El servicio permite administrar el estado de presencia o disponibilidad asociado a un funcionario.
 
-Se manejan respuestas como:
-
-- `400 Bad Request` cuando los datos enviados no cumplen las validaciones.
-- `404 Not Found` cuando el registro solicitado no existe.
+Se aplican validaciones sobre los datos obligatorios, incluyendo el identificador del funcionario y su estado.
 
 ---
 
-## Notificaciones
+## 3. Notificaciones
 
 **Puerto:** `8083`
 
 **Base de datos:** `notificaciones_db`
 
-Endpoint principal:
+**Endpoint principal:**
 
 ```text
 /api/notificaciones
 ```
 
-Operaciones implementadas:
+### Operaciones
 
-- `GET` — listar notificaciones.
-- `GET /{id}` — buscar una notificación.
-- `POST` — crear una notificación.
-- `PUT /{id}` — actualizar una notificación.
-- `DELETE /{id}` — eliminar una notificación.
+- `GET /api/notificaciones` — listar notificaciones.
+- `GET /api/notificaciones/{id}` — buscar una notificación.
+- `POST /api/notificaciones` — crear una notificación.
+- `PUT /api/notificaciones/{id}` — actualizar una notificación.
+- `DELETE /api/notificaciones/{id}` — eliminar una notificación.
 
-Se aplican validaciones sobre los datos requeridos para crear y modificar notificaciones.
+El servicio permite crear y administrar notificaciones internas.
 
-Al crear una notificación, el sistema registra automáticamente su fecha de creación y establece inicialmente su estado correspondiente.
-
-Se manejan respuestas de error como:
-
-- `400 Bad Request` para datos inválidos.
-- `404 Not Found` cuando la notificación solicitada no existe.
+Se aplican validaciones sobre los datos requeridos y manejo de errores para solicitudes inválidas o registros inexistentes.
 
 ---
 
-## Gestión de Estacionamiento
+## 4. Gestión de Estacionamiento
 
 **Puerto:** `8084`
 
 **Base de datos:** `estacionamiento_db`
 
-Endpoint principal:
+**Endpoint principal:**
 
 ```text
 /api/vehiculos
 ```
 
-Permite administrar los vehículos registrados en el sistema mediante operaciones CRUD.
+### Operaciones
 
-Operaciones principales:
+- `GET /api/vehiculos` — listar vehículos.
+- `GET /api/vehiculos/{id}` — buscar un vehículo.
+- `POST /api/vehiculos` — registrar un vehículo.
+- `PUT /api/vehiculos/{id}` — actualizar un vehículo.
+- `DELETE /api/vehiculos/{id}` — eliminar un vehículo.
 
-- `GET` — listar vehículos.
-- `GET /{id}` — buscar un vehículo.
-- `POST` — registrar un vehículo.
-- `PUT /{id}` — actualizar un vehículo.
-- `DELETE /{id}` — eliminar un vehículo.
+El servicio permite registrar y administrar vehículos dentro del sistema.
 
-El servicio incorpora validaciones y manejo de errores para los datos ingresados y registros inexistentes.
+También incorpora validaciones y manejo de errores para datos inválidos y registros inexistentes.
+
+---
+
+## Arquitectura por capas
+
+Los microservicios están organizados utilizando una arquitectura por capas.
+
+Entre los principales componentes se encuentran:
+
+```text
+controller
+model
+repository
+service
+```
+
+### Controller
+
+Recibe las solicitudes HTTP y expone los endpoints REST.
+
+### Service
+
+Contiene la lógica de negocio de cada microservicio.
+
+### Repository
+
+Gestiona el acceso y persistencia de los datos mediante Spring Data JPA.
+
+### Model
+
+Contiene las entidades utilizadas para representar y persistir los datos.
+
+Esta separación permite mantener responsabilidades definidas dentro de cada microservicio.
+
+---
+
+## Persistencia
+
+La persistencia de datos se realiza mediante:
+
+- Spring Data JPA.
+- Hibernate.
+- MySQL.
+
+Cada microservicio administra su propia información y utiliza su correspondiente base de datos.
+
+Las entidades utilizan anotaciones JPA como:
+
+```java
+@Entity
+@Id
+@GeneratedValue
+```
+
+Los repositorios utilizan Spring Data JPA para realizar las operaciones de persistencia.
 
 ---
 
 ## Validaciones y manejo de errores
 
-Los microservicios incorporan validaciones utilizando **Jakarta Validation** y manejo de excepciones para entregar respuestas HTTP apropiadas.
+Los microservicios incorporan validaciones mediante **Jakarta Validation** y manejo de excepciones para responder adecuadamente ante solicitudes incorrectas.
 
 Entre los casos controlados se encuentran:
 
@@ -221,36 +278,72 @@ Entre los casos controlados se encuentran:
 - Registros inexistentes.
 - Registros duplicados cuando corresponde.
 
-Las respuestas HTTP utilizadas incluyen principalmente:
+Entre las respuestas HTTP utilizadas se encuentran:
 
 ```text
 200 OK
-201 Created
-204 No Content
 400 Bad Request
 404 Not Found
 ```
 
-Las operaciones y los casos de error fueron comprobados mediante **Postman**.
+Los endpoints y distintos casos de error pueden comprobarse mediante Postman.
 
 ---
 
-## Configuración de MySQL
+# Requisitos para ejecutar el proyecto
 
-Para ejecutar el proyecto se requiere disponer de un servidor MySQL local.
+Antes de ejecutar la aplicación se requiere tener instalado:
 
-Las bases de datos utilizadas son:
+- Git.
+- Java.
+- MySQL.
+- IntelliJ IDEA u otro IDE compatible con proyectos Maven.
+- Postman para realizar pruebas de los endpoints.
 
-```text
-cesfam_interno_db
-presencia_disponibilidad_db
-notificaciones_db
-estacionamiento_db
+El proyecto incluye **Maven Wrapper**, por lo que no es necesario disponer de una instalación global de Maven para utilizar los comandos indicados en este documento.
+
+---
+
+# Clonación del proyecto
+
+Para obtener una copia del proyecto:
+
+```powershell
+git clone https://github.com/debobravo-code/app-cesfam.git
 ```
 
-Las credenciales de acceso a MySQL deben configurarse localmente en el archivo `application.properties` correspondiente a cada microservicio.
+Luego ingresar a la carpeta:
 
-Ejemplo:
+```powershell
+cd app-cesfam
+```
+
+La rama `main` contiene la versión integrada de los cuatro microservicios.
+
+Para comprobar la rama actual:
+
+```powershell
+git branch
+```
+
+---
+
+# Configuración de MySQL
+
+Para ejecutar los microservicios se requiere disponer de un servidor MySQL local.
+
+Crear las siguientes bases de datos:
+
+```sql
+CREATE DATABASE cesfam_interno_db;
+CREATE DATABASE presencia_disponibilidad_db;
+CREATE DATABASE notificaciones_db;
+CREATE DATABASE estacionamiento_db;
+```
+
+Las credenciales de MySQL deben configurarse en el archivo `application.properties` correspondiente a cada microservicio.
+
+Ejemplo general:
 
 ```properties
 spring.datasource.url=jdbc:mysql://localhost:3306/NOMBRE_BASE_DATOS
@@ -258,93 +351,240 @@ spring.datasource.username=USUARIO_MYSQL
 spring.datasource.password=CONTRASEÑA_MYSQL
 ```
 
-Por seguridad, las credenciales deben corresponder a la configuración local del entorno de desarrollo.
+Las credenciales deben adaptarse a la configuración local del equipo donde se ejecute el proyecto.
 
 ---
 
-## Ejecución de los microservicios
+# Ejecución de los microservicios
 
 Cada microservicio puede ejecutarse de manera independiente.
 
-Desde la carpeta que contiene su archivo `pom.xml`, se puede utilizar Maven Wrapper.
+Es necesario ejecutar los comandos desde la carpeta interna que contiene el archivo `pom.xml` y Maven Wrapper.
 
-En Windows:
+## Funcionarios
+
+Desde la raíz del repositorio:
 
 ```powershell
+cd CesfamInterno\CesfamInterno
 .\mvnw.cmd spring-boot:run
 ```
 
-También puede ejecutarse directamente desde IntelliJ IDEA utilizando la clase principal de cada microservicio.
-
-Para utilizar simultáneamente los cuatro servicios, deben ejecutarse en sus respectivos puertos:
+Servicio disponible en:
 
 ```text
-Funcionarios                  → http://localhost:8081
-Presencia y Disponibilidad    → http://localhost:8082
-Notificaciones                → http://localhost:8083
-Estacionamiento               → http://localhost:8084
+http://localhost:8081
 ```
 
 ---
 
-## Verificación con Maven
+## Presencia y Disponibilidad
 
-Para comprobar el correcto funcionamiento de cada microservicio se utilizan los siguientes comandos:
+Desde la raíz del repositorio:
+
+```powershell
+cd presencia-disponibilidad-service\presencia-disponibilidad-service
+.\mvnw.cmd spring-boot:run
+```
+
+Servicio disponible en:
+
+```text
+http://localhost:8082
+```
+
+---
+
+## Notificaciones
+
+Desde la raíz del repositorio:
+
+```powershell
+cd notificaciones-service\notificaciones-service
+.\mvnw.cmd spring-boot:run
+```
+
+Servicio disponible en:
+
+```text
+http://localhost:8083
+```
+
+---
+
+## Estacionamiento
+
+Desde la raíz del repositorio:
+
+```powershell
+cd estacionamiento-service\estacionamiento-service
+.\mvnw.cmd spring-boot:run
+```
+
+Servicio disponible en:
+
+```text
+http://localhost:8084
+```
+
+---
+
+# Ejecución desde IntelliJ IDEA
+
+También es posible ejecutar cada microservicio desde IntelliJ IDEA.
+
+Para ello:
+
+1. Abrir el microservicio como proyecto Maven.
+2. Esperar que IntelliJ descargue y sincronice las dependencias.
+3. Verificar la configuración de `application.properties`.
+4. Ejecutar la clase principal del microservicio.
+5. Comprobar en la consola que Spring Boot inició correctamente y que se conectó a MySQL.
+
+Para utilizar los cuatro microservicios simultáneamente, cada uno debe permanecer ejecutándose en su puerto correspondiente.
+
+---
+
+# Verificación con Maven
+
+Cada microservicio puede verificarse mediante Maven Wrapper.
+
+Desde la carpeta correspondiente:
 
 ```powershell
 .\mvnw.cmd compile
+```
+
+Permite comprobar la compilación del código.
+
+```powershell
 .\mvnw.cmd test
+```
+
+Ejecuta las pruebas configuradas.
+
+```powershell
 .\mvnw.cmd package
 ```
 
-Estas verificaciones permiten comprobar:
+Compila, ejecuta las pruebas y genera el paquete correspondiente en la carpeta:
 
-- Compilación correcta del código.
-- Ejecución de las pruebas configuradas.
-- Generación correcta del paquete ejecutable del microservicio.
+```text
+target/
+```
 
----
-
-## Seguridad
-
-El proyecto utiliza **Spring Security** como base para la seguridad de los servicios.
-
-La implementación de autenticación mediante **JWT (JSON Web Token)** corresponde a una etapa posterior del desarrollo y permitirá fortalecer el proceso de autenticación y autorización de los usuarios.
-
-Por lo tanto, JWT se considera actualmente una **funcionalidad pendiente de implementación**.
+Los cuatro microservicios han sido comprobados individualmente mediante Maven dentro de la versión integrada del proyecto.
 
 ---
 
-## Próximas etapas
+# Pruebas con Postman
 
-Entre las siguientes etapas del proyecto se encuentran:
+Los endpoints REST pueden probarse mediante Postman.
 
-- Implementación de autenticación mediante JWT utilizando Spring Security.
-- Integración de los microservicios en una versión compartida del proyecto.
-- Integración funcional entre los distintos servicios.
-- Fortalecimiento de la comunicación entre los componentes de la arquitectura.
+Ejemplos:
 
-Otros componentes definidos en la arquitectura general podrán incorporarse progresivamente de acuerdo con el alcance y avance del proyecto.
+```text
+GET http://localhost:8081/api/funcionarios
+GET http://localhost:8082/api/presencia-disponibilidad
+GET http://localhost:8083/api/notificaciones
+GET http://localhost:8084/api/vehiculos
+```
+
+Para las operaciones de creación y actualización se deben enviar los datos correspondientes en formato JSON utilizando:
+
+```text
+Content-Type: application/json
+```
+
+Las pruebas permiten verificar:
+
+- Operaciones CRUD.
+- Persistencia en MySQL.
+- Validaciones.
+- Manejo de errores.
+- Respuestas HTTP.
 
 ---
 
-## Diagrama de arquitectura
+# Seguridad
+
+El proyecto utiliza **Spring Security** en los servicios donde se encuentra configurado.
+
+Durante el desarrollo, Spring Security puede solicitar autenticación para acceder a determinados endpoints dependiendo de la configuración de cada microservicio.
+
+La implementación de autenticación mediante **JWT (JSON Web Token)** no forma parte de la implementación actual y puede incorporarse posteriormente como una mejora de seguridad.
+
+---
+
+# Control de versiones
+
+El proyecto utiliza **Git y GitHub** para el control de versiones.
+
+Durante el desarrollo se utilizaron ramas separadas para el trabajo de las integrantes y posteriormente los cambios fueron integrados en `main`.
+
+Entre las ramas utilizadas se encuentran:
+
+```text
+main
+DEBORA-BRAVO-FUENTES
+MIKELLA-CATALINA-PALMA-CUADRA
+```
+
+La rama `main` contiene actualmente la versión integrada del proyecto.
+
+---
+
+# Diagrama de arquitectura
+
+El diagrama de arquitectura se encuentra disponible en la carpeta:
+
+```text
+anexos/
+```
+
+También se incluye en este README:
 
 ![Diagrama de arquitectura](anexos/imagen%20Diagrama%20ms%20%281%29.png)
 
-El archivo editable del diagrama de arquitectura se encuentra disponible en la carpeta `anexos`.
+---
+
+# Estado actual del proyecto
+
+Actualmente se encuentran implementados e integrados los cuatro microservicios principales:
+
+- Gestión de Funcionarios.
+- Presencia y Disponibilidad.
+- Notificaciones.
+- Gestión de Estacionamiento.
+
+La versión actual incluye:
+
+- Endpoints REST.
+- Operaciones CRUD.
+- Arquitectura por capas.
+- Persistencia mediante MySQL.
+- Spring Data JPA / Hibernate.
+- Validaciones de datos.
+- Manejo de errores.
+- Configuración mediante Maven.
+- Pruebas de endpoints mediante Postman.
+- Verificación de compilación y pruebas mediante Maven.
+- Integración de los cuatro microservicios en la rama `main`.
 
 ---
 
-## Estado actual
+# Posibles mejoras futuras
 
-Actualmente se encuentran implementados los cuatro microservicios principales del proyecto con:
+Como evolución del proyecto se pueden incorporar:
 
-- Operaciones CRUD.
-- Persistencia mediante MySQL.
-- Validaciones de datos.
-- Manejo de errores.
-- Pruebas de endpoints mediante Postman.
-- Verificación de compilación, pruebas y empaquetado mediante Maven.
+- Autenticación mediante JWT.
+- Comunicación directa entre microservicios.
+- Mayor integración funcional entre los servicios.
+- Nuevas funcionalidades para la gestión interna del CESFAM.
+- Mejoras adicionales de seguridad y despliegue.
 
-El proyecto continuará avanzando con la implementación de seguridad mediante JWT y la integración de los microservicios.
+---
+
+## Repositorio
+
+Proyecto académico desarrollado por **Débora Bravo y Mikela Palma**.
