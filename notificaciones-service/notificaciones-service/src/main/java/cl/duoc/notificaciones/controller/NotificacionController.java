@@ -1,8 +1,8 @@
-
 package cl.duoc.notificaciones.controller;
 
 import cl.duoc.notificaciones.model.Notificacion;
 import cl.duoc.notificaciones.service.NotificacionService;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -36,7 +36,9 @@ public class NotificacionController {
 
     // Crear una notificación
     @PostMapping
-    public Notificacion crear(@RequestBody Notificacion notificacion) {
+    public Notificacion crear(
+            @Valid @RequestBody Notificacion notificacion) {
+
         return service.crear(notificacion);
     }
 
@@ -44,7 +46,7 @@ public class NotificacionController {
     @PutMapping("/{id}")
     public ResponseEntity<Notificacion> actualizar(
             @PathVariable Long id,
-            @RequestBody Notificacion notificacion) {
+            @Valid @RequestBody Notificacion notificacion) {
 
         return service.actualizar(id, notificacion)
                 .map(ResponseEntity::ok)
@@ -54,6 +56,7 @@ public class NotificacionController {
     // Eliminar una notificación
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> eliminar(@PathVariable Long id) {
+
         if (service.eliminar(id)) {
             return ResponseEntity.noContent().build();
         }
