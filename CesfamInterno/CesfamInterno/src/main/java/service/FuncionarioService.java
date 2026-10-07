@@ -1,0 +1,56 @@
+package cl.duoc.CesfamInterno.service;
+
+import cl.duoc.CesfamInterno.model.Funcionario;
+import cl.duoc.CesfamInterno.repository.FuncionarioRepository;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.Optional;
+
+@Service
+public class FuncionarioService {
+
+    private final FuncionarioRepository funcionarioRepository;
+
+    public FuncionarioService(FuncionarioRepository funcionarioRepository) {
+        this.funcionarioRepository = funcionarioRepository;
+    }
+
+    public List<Funcionario> listarFuncionarios() {
+        return funcionarioRepository.findAll();
+    }
+
+    public Optional<Funcionario> buscarPorId(Long id) {
+        return funcionarioRepository.findById(id);
+    }
+
+    public Funcionario guardarFuncionario(Funcionario funcionario) {
+
+        if (funcionarioRepository.existsByRut(funcionario.getRut())) {
+            throw new IllegalArgumentException(
+                    "Ya existe un funcionario con el RUT ingresado"
+            );
+        }
+
+        return funcionarioRepository.save(funcionario);
+    }
+
+    public Funcionario actualizarFuncionario(Long id, Funcionario funcionario) {
+
+        if (!funcionarioRepository.existsById(id)) {
+            throw new IllegalArgumentException("Funcionario no encontrado");
+        }
+
+        funcionario.setId(id);
+        return funcionarioRepository.save(funcionario);
+    }
+
+    public void eliminarFuncionario(Long id) {
+
+        if (!funcionarioRepository.existsById(id)) {
+            throw new IllegalArgumentException("Funcionario no encontrado");
+        }
+
+        funcionarioRepository.deleteById(id);
+    }
+}
