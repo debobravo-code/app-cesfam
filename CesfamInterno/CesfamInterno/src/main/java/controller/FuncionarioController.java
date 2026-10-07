@@ -2,6 +2,7 @@ package cl.duoc.CesfamInterno.controller;
 
 import cl.duoc.CesfamInterno.model.Funcionario;
 import cl.duoc.CesfamInterno.service.FuncionarioService;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -30,14 +31,16 @@ public class FuncionarioController {
     }
 
     @PostMapping
-    public Funcionario crearFuncionario(@RequestBody Funcionario funcionario) {
+    public Funcionario crearFuncionario(
+            @Valid @RequestBody Funcionario funcionario) {
+
         return funcionarioService.guardarFuncionario(funcionario);
     }
 
     @PutMapping("/{id}")
     public Funcionario actualizarFuncionario(
             @PathVariable Long id,
-            @RequestBody Funcionario funcionario) {
+            @Valid @RequestBody Funcionario funcionario) {
 
         return funcionarioService.actualizarFuncionario(id, funcionario);
     }
