@@ -12,6 +12,7 @@ import java.util.Map;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    // Errores de validación: campos vacíos
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, String>> manejarValidaciones(
             MethodArgumentNotValidException ex) {
@@ -27,6 +28,7 @@ public class GlobalExceptionHandler {
                 .body(errores);
     }
 
+    // Errores controlados desde el Service
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Map<String, String>> manejarIllegalArgument(
             IllegalArgumentException ex) {
