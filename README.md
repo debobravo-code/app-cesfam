@@ -28,7 +28,7 @@ La aplicación busca apoyar estos procesos internos mediante servicios independi
 - Gestión de estacionamiento.
 - Notificaciones internas.
 
-La aplicación **no reemplaza los sistemas clínicos existentes ni administra información clínica de pacientes**. Su alcance corresponde a procesos internos relacionados con funcionarios del establecimiento.
+La aplicación **no reemplaza los sistemas clínicos existentes ni administra información clínica de pacientes**. Su alcance corresponde exclusivamente a procesos internos relacionados con funcionarios del establecimiento.
 
 ---
 
@@ -206,7 +206,7 @@ Se aplican validaciones sobre los datos requeridos y manejo de errores para soli
 - `PUT /api/vehiculos/{id}` — actualizar un vehículo.
 - `DELETE /api/vehiculos/{id}` — eliminar un vehículo.
 
-El servicio permite registrar y administrar vehículos dentro del sistema.
+El servicio permite registrar y administrar vehículos asociados a funcionarios.
 
 También incorpora validaciones y manejo de errores para datos inválidos y registros inexistentes.
 
@@ -245,7 +245,7 @@ Esta separación permite mantener responsabilidades definidas dentro de cada mic
 
 ---
 
-## Persistencia
+## Persistencia con JPA e Hibernate
 
 La persistencia de datos se realiza mediante:
 
@@ -255,7 +255,7 @@ La persistencia de datos se realiza mediante:
 
 Cada microservicio administra su propia información y utiliza su correspondiente base de datos.
 
-Las entidades utilizan anotaciones JPA como:
+Las entidades se encuentran mapeadas mediante anotaciones JPA como:
 
 ```java
 @Entity
@@ -264,6 +264,22 @@ Las entidades utilizan anotaciones JPA como:
 ```
 
 Los repositorios utilizan Spring Data JPA para realizar las operaciones de persistencia.
+
+La separación de las bases de datos permite que cada microservicio sea responsable de sus propios datos.
+
+---
+
+## Referencias entre microservicios
+
+Cada microservicio administra su propia base de datos, manteniendo separada la persistencia de sus entidades.
+
+Por esta razón, cuando un servicio necesita asociar información a un funcionario se utiliza su identificador, por ejemplo `funcionarioId`, como referencia en lugar de establecer relaciones JPA como `@ManyToOne` o `@OneToMany` entre entidades pertenecientes a distintos microservicios.
+
+Este diseño permite mantener la independencia entre los servicios y sus respectivas bases de datos.
+
+Actualmente, almacenar un `funcionarioId` no garantiza por sí solo que dicho funcionario exista en el microservicio de Gestión de Funcionarios.
+
+Como mejora futura, esta validación podría realizarse mediante comunicación entre microservicios. Antes de registrar información asociada a un funcionario, el servicio correspondiente podría consultar al microservicio de Gestión de Funcionarios para comprobar que el identificador exista.
 
 ---
 
@@ -282,11 +298,12 @@ Entre las respuestas HTTP utilizadas se encuentran:
 
 ```text
 200 OK
+201 Created
 400 Bad Request
 404 Not Found
 ```
 
-Los endpoints y distintos casos de error pueden comprobarse mediante Postman.
+Los endpoints y distintos casos de error fueron comprobados mediante Postman.
 
 ---
 
@@ -332,7 +349,7 @@ git branch
 
 Para ejecutar los microservicios se requiere disponer de un servidor MySQL local.
 
-Crear las siguientes bases de datos:
+Las bases de datos utilizadas por el proyecto son:
 
 ```sql
 CREATE DATABASE cesfam_interno_db;
@@ -359,7 +376,7 @@ Las credenciales deben adaptarse a la configuración local del equipo donde se e
 
 Cada microservicio puede ejecutarse de manera independiente.
 
-Es necesario ejecutar los comandos desde la carpeta interna que contiene el archivo `pom.xml` y Maven Wrapper.
+Los comandos deben ejecutarse desde la carpeta interna correspondiente, donde se encuentra el archivo `pom.xml` y Maven Wrapper.
 
 ## Funcionarios
 
@@ -467,13 +484,17 @@ Ejecuta las pruebas configuradas.
 .\mvnw.cmd package
 ```
 
-Compila, ejecuta las pruebas y genera el paquete correspondiente en la carpeta:
+Compila, ejecuta las pruebas y genera el paquete ejecutable correspondiente en:
 
 ```text
 target/
 ```
 
-Los cuatro microservicios han sido comprobados individualmente mediante Maven dentro de la versión integrada del proyecto.
+Los cuatro microservicios fueron comprobados desde una clonación limpia del repositorio mediante:
+
+- `mvn test`.
+- `mvn package`.
+- Generación correcta de sus archivos `.jar`.
 
 ---
 
@@ -496,7 +517,7 @@ Para las operaciones de creación y actualización se deben enviar los datos cor
 Content-Type: application/json
 ```
 
-Las pruebas permiten verificar:
+Las pruebas realizadas permiten verificar:
 
 - Operaciones CRUD.
 - Persistencia en MySQL.
@@ -512,7 +533,7 @@ El proyecto utiliza **Spring Security** en los servicios donde se encuentra conf
 
 Durante el desarrollo, Spring Security puede solicitar autenticación para acceder a determinados endpoints dependiendo de la configuración de cada microservicio.
 
-La implementación de autenticación mediante **JWT (JSON Web Token)** no forma parte de la implementación actual y puede incorporarse posteriormente como una mejora de seguridad.
+La autenticación mediante **JWT (JSON Web Token)** no forma parte de la implementación actual y puede incorporarse posteriormente como una mejora de seguridad.
 
 ---
 
@@ -520,9 +541,9 @@ La implementación de autenticación mediante **JWT (JSON Web Token)** no forma 
 
 El proyecto utiliza **Git y GitHub** para el control de versiones.
 
-Durante el desarrollo se utilizaron ramas separadas para el trabajo de las integrantes y posteriormente los cambios fueron integrados en `main`.
+Durante el desarrollo se utilizó una rama de trabajo por integrante y posteriormente los cambios fueron integrados en la rama `main`.
 
-Entre las ramas utilizadas se encuentran:
+Las principales ramas utilizadas son:
 
 ```text
 main
@@ -530,7 +551,11 @@ DEBORA-BRAVO-FUENTES
 MIKELLA-CATALINA-PALMA-CUADRA
 ```
 
-La rama `main` contiene actualmente la versión integrada del proyecto.
+- `DEBORA-BRAVO-FUENTES`: utilizada para el desarrollo correspondiente a Débora.
+- `MIKELLA-CATALINA-PALMA-CUADRA`: utilizada para el desarrollo correspondiente a Mikela.
+- `main`: contiene la versión integrada del proyecto.
+
+Este flujo permitió mantener separado el trabajo de ambas integrantes durante el desarrollo y posteriormente integrar los cambios en una versión común.
 
 ---
 
@@ -563,13 +588,16 @@ La versión actual incluye:
 - Operaciones CRUD.
 - Arquitectura por capas.
 - Persistencia mediante MySQL.
-- Spring Data JPA / Hibernate.
+- Entidades mapeadas con JPA.
+- Persistencia mediante Spring Data JPA / Hibernate.
 - Validaciones de datos.
 - Manejo de errores.
 - Configuración mediante Maven.
 - Pruebas de endpoints mediante Postman.
-- Verificación de compilación y pruebas mediante Maven.
+- Verificación mediante Maven.
+- Generación de archivos `.jar`.
 - Integración de los cuatro microservicios en la rama `main`.
+- Documentación para clonación, configuración y ejecución del proyecto.
 
 ---
 
@@ -577,6 +605,7 @@ La versión actual incluye:
 
 Como evolución del proyecto se pueden incorporar:
 
+- Validación de `funcionarioId` mediante comunicación con el microservicio de Gestión de Funcionarios.
 - Autenticación mediante JWT.
 - Comunicación directa entre microservicios.
 - Mayor integración funcional entre los servicios.
