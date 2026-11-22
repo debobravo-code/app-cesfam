@@ -14,6 +14,7 @@ public class SecurityConfig {
         http
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/api/estado").permitAll()
                         .anyRequest().authenticated()
                 )
                 .httpBasic(basic -> {});

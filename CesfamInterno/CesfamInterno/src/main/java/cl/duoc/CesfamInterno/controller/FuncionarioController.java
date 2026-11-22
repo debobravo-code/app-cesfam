@@ -50,4 +50,6 @@ public class FuncionarioController {
         funcionarioService.eliminarFuncionario(id);
         return ResponseEntity.noContent().build();
     }
+
+
 }
