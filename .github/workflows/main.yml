@@ -13,18 +13,43 @@ jobs:
     name: Compilar y probar - ${{ matrix.servicio.nombre }}
     runs-on: ubuntu-latest
 
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root123
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot123"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
     strategy:
       fail-fast: false
       matrix:
         servicio:
           - nombre: Funcionarios
             ruta: CesfamInterno/CesfamInterno
+            base_datos: cesfam_interno_db
+
           - nombre: Estacionamiento
             ruta: estacionamiento-service/estacionamiento-service
+            base_datos: estacionamiento_db
+
           - nombre: Notificaciones
             ruta: notificaciones-service/notificaciones-service
+            base_datos: notificaciones_db
+
           - nombre: Presencia
             ruta: presencia-disponibilidad-service/presencia-disponibilidad-service
+            base_datos: presencia_disponibilidad_db
+
+    env:
+      DB_URL: jdbc:mysql://127.0.0.1:3306/${{ matrix.servicio.base_datos }}?createDatabaseIfNotExist=true&serverTimezone=America/Santiago
+      DB_USERNAME: root
+      DB_PASSWORD: root123
 
     defaults:
       run:
