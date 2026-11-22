@@ -1,5 +1,5 @@
 
-name: CI - App Interna CESFAM
+name: CI/CD - App Interna CESFAM
 
 on:
   push:
@@ -7,6 +7,10 @@ on:
   pull_request:
     branches: [main]
   workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
 
 jobs:
   compilar-y-probar:
@@ -51,10 +55,6 @@ jobs:
       DB_USERNAME: root
       DB_PASSWORD: root123
 
-    defaults:
-      run:
-        shell: bash
-
     steps:
       - name: Descargar repositorio
         uses: actions/checkout@v4
@@ -70,3 +70,65 @@ jobs:
       - name: Compilar y ejecutar pruebas
         working-directory: ${{ matrix.servicio.ruta }}
         run: bash ./mvnw clean verify
+
+  construir-y-publicar:
+    name: Docker - ${{ matrix.servicio.nombre }}
+    needs: compilar-y-probar
+
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        servicio:
+          - nombre: Funcionarios
+            ruta: CesfamInterno/CesfamInterno
+            imagen: cesfam-funcionarios
+
+          - nombre: Estacionamiento
+            ruta: estacionamiento-service/estacionamiento-service
+            imagen: cesfam-estacionamiento
+
+          - nombre: Notificaciones
+            ruta: notificaciones-service/notificaciones-service
+            imagen: cesfam-notificaciones
+
+          - nombre: Presencia
+            ruta: presencia-disponibilidad-service/presencia-disponibilidad-service
+            imagen: cesfam-presencia
+
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Generar archivo JAR
+        working-directory: ${{ matrix.servicio.ruta }}
+        run: bash ./mvnw package -DskipTests
+
+      - name: Configurar Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Iniciar sesion en GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Construir y publicar imagen Docker
+        uses: docker/build-push-action@v6
+        with:
+          context: ./${{ matrix.servicio.ruta }}
+          file: ./${{ matrix.servicio.ruta }}/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/${{ matrix.servicio.imagen }}:latest
+            ghcr.io/${{ github.repository_owner }}/${{ matrix.servicio.imagen }}:${{ github.sha }}
