@@ -1,0 +1,47 @@
+
+name: CI - App Interna CESFAM
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  compilar-y-probar:
+    name: Compilar y probar - ${{ matrix.servicio.nombre }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        servicio:
+          - nombre: Funcionarios
+            ruta: CesfamInterno/CesfamInterno
+          - nombre: Estacionamiento
+            ruta: estacionamiento-service/estacionamiento-service
+          - nombre: Notificaciones
+            ruta: notificaciones-service/notificaciones-service
+          - nombre: Presencia
+            ruta: presencia-disponibilidad-service/presencia-disponibilidad-service
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+          cache-dependency-path: ${{ matrix.servicio.ruta }}/pom.xml
+
+      - name: Compilar y ejecutar pruebas
+        working-directory: ${{ matrix.servicio.ruta }}
+        run: bash ./mvnw clean verify
