@@ -617,3 +617,6 @@ Como evolución del proyecto se pueden incorporar:
 ## Repositorio
 
 Proyecto académico desarrollado por **Débora Bravo y Mikela Palma**.
+
+## Despliegue automatizado
+El proyecto utiliza GitHub Actions para compilar, probar y publicar imagenes Docker. El Manager de AWS verifica nuevas versiones cada 2 minutos y actualiza los servicios en Docker Swarm.
