@@ -1,4 +1,3 @@
-
 AWSTemplateFormatVersion: '2010-09-09'
 Description: Infraestructura AWS para App Interna CESFAM - SQS y Lambda
 
@@ -31,7 +30,7 @@ Resources:
     Properties:
       FunctionName: !Ref NombreLambda
       Runtime: python3.13
-      Handler: lambda_function.lambda_handler
+      Handler: index.lambda_handler
       Role: !Ref ArnRolLambda
       Architectures:
         - x86_64
