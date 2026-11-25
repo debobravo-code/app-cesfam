@@ -128,9 +128,56 @@ jobs:
             ghcr.io/${{ github.repository_owner }}/${{ matrix.servicio.imagen }}:latest
             ghcr.io/${{ github.repository_owner }}/${{ matrix.servicio.imagen }}:${{ github.sha }}
 
+  desplegar-infraestructura:
+    name: Desplegar infraestructura - CloudFormation
+    needs: construir-y-publicar
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar credenciales de AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: us-east-1
+
+      - name: Validar plantilla CloudFormation
+        run: |
+          aws cloudformation validate-template \
+            --template-body file://infra/aws/template.yaml \
+            --region us-east-1 \
+            --no-cli-pager
+
+      - name: Desplegar infraestructura AWS
+        run: |
+          aws cloudformation deploy \
+            --template-file infra/aws/template.yaml \
+            --stack-name cesfam-infra-test \
+            --parameter-overrides \
+              NombreCola=cesfam-notificaciones-test \
+              NombreLambda=cesfam-procesar-notificaciones-test \
+              ArnRolLambda=arn:aws:iam::654654475821:role/LabRole \
+            --region us-east-1 \
+            --no-fail-on-empty-changeset \
+            --no-cli-pager
+
+      - name: Verificar recursos desplegados
+        run: |
+          aws cloudformation describe-stack-resources \
+            --stack-name cesfam-infra-test \
+            --region us-east-1 \
+            --output table \
+            --no-cli-pager
+
   desplegar-en-aws:
     name: Desplegar en AWS - Docker Swarm
-    needs: construir-y-publicar
+    needs: desplegar-infraestructura
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 20
