@@ -1,214 +1,226 @@
+name: CI/CD - App Interna CESFAM
 
-  name: CI/CD - App Interna CESFAM
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
 
-  on:
-    push:
-      branches: [main]
-    pull_request:
-      branches: [main]
-    workflow_dispatch:
+permissions:
+  contents: read
+  packages: write
 
-  permissions:
-    contents: read
-    packages: write
+concurrency:
+  group: cesfam-despliegue-main
+  cancel-in-progress: false
 
-  concurrency:
-    group: cesfam-despliegue-main
-    cancel-in-progress: false
+jobs:
+  compilar-y-probar:
+    name: Compilar y probar - ${{ matrix.servicio.nombre }}
+    runs-on: ubuntu-latest
 
-  jobs:
-    compilar-y-probar:
-      name: Compilar y probar - ${{ matrix.servicio.nombre }}
-      runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root123
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot123"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
 
-      services:
-        mysql:
-          image: mysql:8.4
-          env:
-            MYSQL_ROOT_PASSWORD: root123
-          ports:
-            - 3306:3306
-          options: >-
-            --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot123"
-            --health-interval=10s
-            --health-timeout=5s
-            --health-retries=10
+    strategy:
+      fail-fast: false
+      matrix:
+        servicio:
+          - nombre: Funcionarios
+            ruta: CesfamInterno/CesfamInterno
+            base_datos: cesfam_interno_db
+          - nombre: Estacionamiento
+            ruta: estacionamiento-service/estacionamiento-service
+            base_datos: estacionamiento_db
+          - nombre: Notificaciones
+            ruta: notificaciones-service/notificaciones-service
+            base_datos: notificaciones_db
+          - nombre: Presencia
+            ruta: presencia-disponibilidad-service/presencia-disponibilidad-service
+            base_datos: presencia_disponibilidad_db
 
-      strategy:
-        fail-fast: false
-        matrix:
-          servicio:
-            - nombre: Funcionarios
-              ruta: CesfamInterno/CesfamInterno
-              base_datos: cesfam_interno_db
-            - nombre: Estacionamiento
-              ruta: estacionamiento-service/estacionamiento-service
-              base_datos: estacionamiento_db
-            - nombre: Notificaciones
-              ruta: notificaciones-service/notificaciones-service
-              base_datos: notificaciones_db
-            - nombre: Presencia
-              ruta: presencia-disponibilidad-service/presencia-disponibilidad-service
-              base_datos: presencia_disponibilidad_db
+    env:
+      DB_URL: jdbc:mysql://127.0.0.1:3306/${{ matrix.servicio.base_datos }}?createDatabaseIfNotExist=true&serverTimezone=America/Santiago
+      DB_USERNAME: root
+      DB_PASSWORD: root123
 
-      env:
-        DB_URL: jdbc:mysql://127.0.0.1:3306/${{ matrix.servicio.base_datos }}?createDatabaseIfNotExist=true&serverTimezone=America/Santiago
-        DB_USERNAME: root
-        DB_PASSWORD: root123
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
 
-      steps:
-        - name: Descargar repositorio
-          uses: actions/checkout@v4
+      - name: Configurar Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+          cache-dependency-path: ${{ matrix.servicio.ruta }}/pom.xml
 
-        - name: Configurar Java 21
-          uses: actions/setup-java@v4
-          with:
-            distribution: temurin
-            java-version: '21'
-            cache: maven
-            cache-dependency-path: ${{ matrix.servicio.ruta }}/pom.xml
+      - name: Compilar y ejecutar pruebas
+        working-directory: ${{ matrix.servicio.ruta }}
+        run: bash ./mvnw clean verify
 
-        - name: Compilar y ejecutar pruebas
-          working-directory: ${{ matrix.servicio.ruta }}
-          run: bash ./mvnw clean verify
+  construir-y-publicar:
+    name: Docker - ${{ matrix.servicio.nombre }}
+    needs: compilar-y-probar
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
 
-    construir-y-publicar:
-      name: Docker - ${{ matrix.servicio.nombre }}
-      needs: compilar-y-probar
-      if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
-      runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        servicio:
+          - nombre: Funcionarios
+            ruta: CesfamInterno/CesfamInterno
+            imagen: cesfam-funcionarios
+          - nombre: Estacionamiento
+            ruta: estacionamiento-service/estacionamiento-service
+            imagen: cesfam-estacionamiento
+          - nombre: Notificaciones
+            ruta: notificaciones-service/notificaciones-service
+            imagen: cesfam-notificaciones
+          - nombre: Presencia
+            ruta: presencia-disponibilidad-service/presencia-disponibilidad-service
+            imagen: cesfam-presencia
 
-      strategy:
-        fail-fast: false
-        matrix:
-          servicio:
-            - nombre: Funcionarios
-              ruta: CesfamInterno/CesfamInterno
-              imagen: cesfam-funcionarios
-            - nombre: Estacionamiento
-              ruta: estacionamiento-service/estacionamiento-service
-              imagen: cesfam-estacionamiento
-            - nombre: Notificaciones
-              ruta: notificaciones-service/notificaciones-service
-              imagen: cesfam-notificaciones
-            - nombre: Presencia
-              ruta: presencia-disponibilidad-service/presencia-disponibilidad-service
-              imagen: cesfam-presencia
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
 
-      steps:
-        - name: Descargar repositorio
-          uses: actions/checkout@v4
+      - name: Configurar Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
 
+      - name: Generar archivo JAR
+        working-directory: ${{ matrix.servicio.ruta }}
+        run: bash ./mvnw package -DskipTests
 
+      - name: Configurar Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-        - name: Configurar Java 21
-          uses: actions/setup-java@v4
-          with:
-            distribution: temurin
-            java-version: '21'
+      - name: Iniciar sesion en GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-        - name: Generar archivo JAR
-          working-directory: ${{ matrix.servicio.ruta }}
-          run: bash ./mvnw package -DskipTests
+      - name: Construir y publicar imagen Docker
+        uses: docker/build-push-action@v6
+        with:
+          context: ./${{ matrix.servicio.ruta }}
+          file: ./${{ matrix.servicio.ruta }}/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/${{ matrix.servicio.imagen }}:latest
+            ghcr.io/${{ github.repository_owner }}/${{ matrix.servicio.imagen }}:${{ github.sha }}
 
-        - name: Configurar Docker Buildx
-          uses: docker/setup-buildx-action@v3
+  desplegar-en-aws:
+    name: Desplegar en AWS - Docker Swarm
+    needs: construir-y-publicar
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
 
-        - name: Iniciar sesion en GitHub Container Registry
-          uses: docker/login-action@v3
-          with:
-            registry: ghcr.io
-            username: ${{ github.actor }}
-            password: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Configurar SSH y verificar identidad del servidor
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
+          SSH_HOST_KEY: ${{ secrets.EC2_HOST_KEY }}
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+        run: |
+          set -euo pipefail
 
-        - name: Construir y publicar imagen Docker
-          uses: docker/build-push-action@v6
-          with:
-            context: ./${{ matrix.servicio.ruta }}
-            file: ./${{ matrix.servicio.ruta }}/Dockerfile
-            push: true
-            tags: |
-              ghcr.io/${{ github.repository_owner }}/${{ matrix.servicio.imagen }}:latest
-              ghcr.io/${{ github.repository_owner }}/${{ matrix.servicio.imagen }}:${{ github.sha }}
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
 
-    desplegar-en-aws:
-      name: Desplegar en AWS - Docker Swarm
-      needs: construir-y-publicar
-      if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
-      runs-on: ubuntu-latest
-      timeout-minutes: 15
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_ec2
+          chmod 600 ~/.ssh/id_ec2
 
-      steps:
-        - name: Configurar SSH y verificar identidad del servidor
-          env:
-            SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
-            SSH_HOST_KEY: ${{ secrets.EC2_HOST_KEY }}
-            EC2_HOST: ${{ secrets.EC2_HOST }}
-          run: |
-            set -euo pipefail
-  
-            mkdir -p ~/.ssh
-            chmod 700 ~/.ssh
-  
-            printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_ec2
-            chmod 600 ~/.ssh/id_ec2
-  
-            printf '%s %s\n' "$EC2_HOST" "$SSH_HOST_KEY" > ~/.ssh/known_hosts
-            chmod 600 ~/.ssh/known_hosts
+          printf '%s %s\n' "$EC2_HOST" "$SSH_HOST_KEY" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
 
-        - name: Verificar conexion SSH y Docker Swarm
-          env:
-            EC2_HOST: ${{ secrets.EC2_HOST }}
-            EC2_USER: ${{ secrets.EC2_USER }}
-          run: |
-            ssh -i ~/.ssh/id_ec2 \
-              -o BatchMode=yes \
-              -o StrictHostKeyChecking=yes \
-              -o ConnectTimeout=15 \
-              "$EC2_USER@$EC2_HOST" \
-              'sudo -n docker info --format "{{.Swarm.LocalNodeState}} | Manager: {{.Swarm.ControlAvailable}}"'
+      - name: Verificar conexion SSH y Docker Swarm
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USER: ${{ secrets.EC2_USER }}
+        run: |
+          ssh -i ~/.ssh/id_ec2 \
+            -o BatchMode=yes \
+            -o StrictHostKeyChecking=yes \
+            -o ConnectTimeout=15 \
+            "$EC2_USER@$EC2_HOST" \
+            'sudo -n docker info --format "{{.Swarm.LocalNodeState}} | Manager: {{.Swarm.ControlAvailable}}"'
 
-        - name: Actualizar microservicios en Docker Swarm
-          env:
-            EC2_HOST: ${{ secrets.EC2_HOST }}
-            EC2_USER: ${{ secrets.EC2_USER }}
-            IMAGE_OWNER: ${{ github.repository_owner }}
-            IMAGE_TAG: ${{ github.sha }}
-          run: |
-            set -euo pipefail
-  
-            ssh -i ~/.ssh/id_ec2 \
-              -o BatchMode=yes \
-              -o StrictHostKeyChecking=yes \
-              -o ConnectTimeout=15 \
-              "$EC2_USER@$EC2_HOST" \
-              "IMAGE_OWNER='$IMAGE_OWNER' IMAGE_TAG='$IMAGE_TAG' bash -se" <<'REMOTE'
-            set -euo pipefail
-  
-            OWNER="$(printf '%s' "$IMAGE_OWNER" | tr '[:upper:]' '[:lower:]')"
-  
-            actualizar() {
-              servicio="$1"
-              imagen="$2"
-              nueva_imagen="ghcr.io/$OWNER/$imagen:$IMAGE_TAG"
-  
-              echo "Actualizando $servicio"
-  
-              sudo -n docker service inspect "$servicio" >/dev/null
-  
-              sudo -n docker service update \
-                --update-failure-action rollback \
-                --image "$nueva_imagen" \
-                "$servicio"
-  
-              echo "Actualizado: $servicio"
-            }
-  
-            actualizar cesfam_funcionarios cesfam-funcionarios
-            actualizar cesfam_estacionamiento cesfam-estacionamiento
-            actualizar cesfam_notificaciones cesfam-notificaciones
-            actualizar cesfam_presencia cesfam-presencia
-  
-            echo "Estado final de los servicios:"
-            sudo -n docker service ls
-            REMOTE
+      - name: Actualizar microservicios en Docker Swarm
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USER: ${{ secrets.EC2_USER }}
+          IMAGE_OWNER: ${{ github.repository_owner }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          ssh -i ~/.ssh/id_ec2 \
+            -o BatchMode=yes \
+            -o StrictHostKeyChecking=yes \
+            -o ConnectTimeout=15 \
+            "$EC2_USER@$EC2_HOST" \
+            "IMAGE_OWNER='$IMAGE_OWNER' IMAGE_TAG='$IMAGE_TAG' bash -se" <<'REMOTE'
+          set -euo pipefail
+
+          OWNER="$(printf '%s' "$IMAGE_OWNER" | tr '[:upper:]' '[:lower:]')"
+
+          actualizar() {
+            servicio="$1"
+            imagen="$2"
+            nueva_imagen="ghcr.io/$OWNER/$imagen:$IMAGE_TAG"
+
+            echo "Actualizando $servicio"
+
+            sudo -n docker service inspect "$servicio" >/dev/null
+
+            sudo -n docker service update \
+              --update-failure-action rollback \
+              --image "$nueva_imagen" \
+              "$servicio"
+
+            echo "Actualizado: $servicio"
+          }
+
+          echo "Configurando escalabilidad de Funcionarios"
+
+          sudo -n docker service update \
+            --replicas-max-per-node 1 \
+            cesfam_funcionarios
+
+          actualizar cesfam_funcionarios cesfam-funcionarios
+          actualizar cesfam_estacionamiento cesfam-estacionamiento
+          actualizar cesfam_notificaciones cesfam-notificaciones
+          actualizar cesfam_presencia cesfam-presencia
+
+          echo "Verificando configuracion de escalabilidad:"
+          sudo -n docker service inspect cesfam_funcionarios \
+            --format '{{json .Spec.TaskTemplate.Placement}}'
+
+          echo "Estado final de los servicios:"
+          sudo -n docker service ls
+
+          echo "Distribucion de replicas de Funcionarios:"
+          sudo -n docker service ps cesfam_funcionarios \
+            --filter desired-state=running
+
+          REMOTE
