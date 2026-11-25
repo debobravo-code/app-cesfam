@@ -133,9 +133,61 @@ jobs:
     needs: construir-y-publicar
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
+
+    env:
+      SECURITY_GROUP_ID: sg-0ced99d3f0f7f3f08
+      AWS_REGION: us-east-1
 
     steps:
+      - name: Configurar credenciales de AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: us-east-1
+
+      - name: Verificar autenticacion con AWS
+        run: |
+          aws sts get-caller-identity
+
+      - name: Detectar IP publica del runner
+        id: runner-ip
+        run: |
+          set -euo pipefail
+
+          RUNNER_IP="$(curl -4 -fsS --retry 3 --max-time 15 https://checkip.amazonaws.com | tr -d '[:space:]')"
+
+          python3 -c 'import ipaddress, sys; ipaddress.IPv4Address(sys.argv[1])' "$RUNNER_IP"
+
+          echo "ip=$RUNNER_IP" >> "$GITHUB_OUTPUT"
+
+          echo "IP publica del runner: $RUNNER_IP"
+
+      - name: Autorizar acceso SSH temporal
+        id: autorizar-ssh
+        env:
+          RUNNER_IP: ${{ steps.runner-ip.outputs.ip }}
+        run: |
+          set -euo pipefail
+
+          RULE_ID="$(aws ec2 authorize-security-group-ingress \
+            --group-id "$SECURITY_GROUP_ID" \
+            --ip-permissions "IpProtocol=tcp,FromPort=22,ToPort=22,IpRanges=[{CidrIp=$RUNNER_IP/32,Description=GitHub-Actions-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT}]" \
+            --region "$AWS_REGION" \
+            --query 'SecurityGroupRules[0].SecurityGroupRuleId' \
+            --output text)"
+
+          [[ "$RULE_ID" == sgr-* ]]
+
+          echo "rule_id=$RULE_ID" >> "$GITHUB_OUTPUT"
+
+          echo "Acceso SSH temporal autorizado: $RUNNER_IP/32"
+          echo "Regla creada: $RULE_ID"
+
+          sleep 10
+
       - name: Configurar SSH y verificar identidad del servidor
         env:
           SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
@@ -166,6 +218,7 @@ jobs:
             'sudo -n docker info --format "{{.Swarm.LocalNodeState}} | Manager: {{.Swarm.ControlAvailable}}"'
 
       - name: Actualizar microservicios en Docker Swarm
+        timeout-minutes: 12
         env:
           EC2_HOST: ${{ secrets.EC2_HOST }}
           EC2_USER: ${{ secrets.EC2_USER }}
@@ -198,6 +251,13 @@ jobs:
               --image "$nueva_imagen" \
               "$servicio"
 
+            imagen_actual="$(sudo -n docker service inspect "$servicio" --format '{{.Spec.TaskTemplate.ContainerSpec.Image}}')"
+
+            if [[ "$imagen_actual" != "$nueva_imagen" && "$imagen_actual" != "$nueva_imagen"@sha256:* ]]; then
+              echo "ERROR: El servicio no utiliza la imagen esperada"
+              exit 1
+            fi
+
             echo "Actualizado: $servicio"
           }
 
@@ -224,3 +284,22 @@ jobs:
             --filter desired-state=running
 
           REMOTE
+
+      - name: Retirar acceso SSH temporal
+        if: ${{ always() && steps.autorizar-ssh.outputs.rule_id != '' }}
+        env:
+          RULE_ID: ${{ steps.autorizar-ssh.outputs.rule_id }}
+        run: |
+          set -euo pipefail
+
+          aws ec2 revoke-security-group-ingress \
+            --group-id "$SECURITY_GROUP_ID" \
+            --security-group-rule-ids "$RULE_ID" \
+            --region "$AWS_REGION"
+
+          echo "Regla SSH temporal eliminada correctamente"
+
+      - name: Limpiar archivos SSH
+        if: always()
+        run: |
+          rm -f ~/.ssh/id_ec2 ~/.ssh/known_hosts
