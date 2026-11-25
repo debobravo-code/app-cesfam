@@ -1,0 +1,97 @@
+
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Infraestructura AWS para App Interna CESFAM - SQS y Lambda
+
+Parameters:
+  NombreCola:
+    Type: String
+    Default: cesfam-notificaciones-queue
+    Description: Nombre de la cola SQS
+
+  NombreLambda:
+    Type: String
+    Default: cesfam-procesar-notificaciones
+    Description: Nombre de la funcion Lambda
+
+  ArnRolLambda:
+    Type: String
+    Description: ARN del rol IAM existente para ejecutar Lambda
+
+Resources:
+  ColaNotificaciones:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Ref NombreCola
+      VisibilityTimeout: 60
+      MessageRetentionPeriod: 345600
+      SqsManagedSseEnabled: true
+
+  FuncionProcesarNotificaciones:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Ref NombreLambda
+      Runtime: python3.13
+      Handler: lambda_function.lambda_handler
+      Role: !Ref ArnRolLambda
+      Architectures:
+        - x86_64
+      Timeout: 30
+      MemorySize: 128
+      Code:
+        ZipFile: |
+          import json
+          import logging
+
+          logger = logging.getLogger()
+          logger.setLevel(logging.INFO)
+
+          def lambda_handler(event, context):
+              procesados = 0
+
+              for record in event.get("Records", []):
+                  try:
+                      mensaje = json.loads(record["body"])
+
+                      funcionario = mensaje.get("funcionario", "No especificado")
+                      tipo = mensaje.get("tipo", "NOTIFICACION")
+                      detalle = mensaje.get("detalle", "Sin detalle")
+
+                      logger.info(
+                          "CESFAM | Tipo: %s | Funcionario: %s | Detalle: %s",
+                          tipo, funcionario, detalle
+                      )
+
+                      procesados += 1
+
+                  except Exception:
+                      logger.exception("Error al procesar notificacion")
+                      raise
+
+              return {
+                  "statusCode": 200,
+                  "body": json.dumps({
+                      "mensaje": "Notificaciones procesadas correctamente",
+                      "cantidad": procesados
+                  })
+              }
+
+  DesencadenadorSQS:
+    Type: AWS::Lambda::EventSourceMapping
+    Properties:
+      EventSourceArn: !GetAtt ColaNotificaciones.Arn
+      FunctionName: !Ref FuncionProcesarNotificaciones
+      BatchSize: 1
+      Enabled: true
+
+Outputs:
+  UrlCola:
+    Description: URL de la cola SQS
+    Value: !Ref ColaNotificaciones
+
+  ArnCola:
+    Description: ARN de la cola SQS
+    Value: !GetAtt ColaNotificaciones.Arn
+
+  ArnLambda:
+    Description: ARN de la funcion Lambda
+    Value: !GetAtt FuncionProcesarNotificaciones.Arn
