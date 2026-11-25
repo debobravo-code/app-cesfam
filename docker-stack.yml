@@ -1,0 +1,235 @@
+version: "3.8"
+
+services:
+
+  funcionarios:
+    image: ghcr.io/debobravo-code/cesfam-funcionarios:${IMAGE_TAG:?Configurar IMAGE_TAG}
+    entrypoint:
+      - /bin/sh
+      - /opt/cesfam/iniciar-servicio.sh
+    configs:
+      - source: cesfam-iniciar-servicio-v1
+        target: /opt/cesfam/iniciar-servicio.sh
+        mode: 0444
+    ports:
+      - target: 8081
+        published: 9081
+        protocol: tcp
+        mode: ingress
+    environment:
+      DB_URL: "jdbc:mysql://cesfam-mysql:3306/cesfam_interno_db?serverTimezone=America/Santiago"
+      DB_USERNAME: cesfam_funcionarios
+      JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=65.0"
+      SPRING_SECURITY_USER_NAME: cesfam_api
+    secrets:
+      - source: cesfam-funcionarios-db-password
+        target: db_password
+      - source: cesfam-funcionarios-security-password
+        target: security_password
+    networks:
+      cesfam-swarm-network:
+        aliases:
+          - funcionarios
+    deploy:
+      mode: replicated
+      replicas: 1
+      endpoint_mode: vip
+      placement:
+        max_replicas_per_node: 1
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+      update_config:
+        parallelism: 1
+        failure_action: rollback
+        monitor: 5s
+        max_failure_ratio: 0
+        order: stop-first
+      rollback_config:
+        parallelism: 1
+        failure_action: pause
+        monitor: 5s
+        max_failure_ratio: 0
+        order: stop-first
+
+  presencia:
+    image: ghcr.io/debobravo-code/cesfam-presencia:${IMAGE_TAG:?Configurar IMAGE_TAG}
+    entrypoint:
+      - /bin/sh
+      - /opt/cesfam/iniciar-servicio.sh
+    configs:
+      - source: cesfam-iniciar-servicio-v1
+        target: /opt/cesfam/iniciar-servicio.sh
+        mode: 0444
+    environment:
+      DB_URL: "jdbc:mysql://cesfam-mysql:3306/presencia_disponibilidad_db?createDatabaseIfNotExist=true&serverTimezone=America/Santiago"
+      DB_USERNAME: root
+      JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=65.0"
+      SPRING_SECURITY_USER_NAME: cesfam_api
+    secrets:
+      - source: cesfam-presencia-db-password
+        target: db_password
+      - source: cesfam-presencia-security-password
+        target: security_password
+    networks:
+      cesfam-swarm-network:
+        aliases:
+          - presencia
+    deploy:
+      mode: replicated
+      replicas: 1
+      endpoint_mode: vip
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+      update_config:
+        parallelism: 1
+        failure_action: rollback
+        monitor: 5s
+        max_failure_ratio: 0
+        order: stop-first
+      rollback_config:
+        parallelism: 1
+        failure_action: pause
+        monitor: 5s
+        max_failure_ratio: 0
+        order: stop-first
+
+  notificaciones:
+    image: ghcr.io/debobravo-code/cesfam-notificaciones:${IMAGE_TAG:?Configurar IMAGE_TAG}
+    entrypoint:
+      - /bin/sh
+      - /opt/cesfam/iniciar-servicio.sh
+    configs:
+      - source: cesfam-iniciar-servicio-v1
+        target: /opt/cesfam/iniciar-servicio.sh
+        mode: 0444
+    environment:
+      DB_URL: "jdbc:mysql://cesfam-mysql:3306/notificaciones_db?createDatabaseIfNotExist=true&serverTimezone=America/Santiago"
+      DB_USERNAME: root
+      JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=65.0"
+      API_USERNAME: cesfam_api
+      AWS_REGION: us-east-1
+      AWS_SQS_ENABLED: "true"
+      AWS_SQS_QUEUE_URL: "${AWS_SQS_QUEUE_URL:?Configurar AWS_SQS_QUEUE_URL}"
+    secrets:
+      - source: cesfam-notificaciones-api-password
+        target: api_password
+      - source: cesfam-notificaciones-db-password
+        target: db_password
+    networks:
+      cesfam-swarm-network:
+        aliases:
+          - notificaciones
+    deploy:
+      mode: replicated
+      replicas: 1
+      endpoint_mode: vip
+      placement:
+        constraints:
+          - node.labels.tipo==manager
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+      update_config:
+        parallelism: 1
+        failure_action: rollback
+        monitor: 5s
+        max_failure_ratio: 0
+        order: stop-first
+      rollback_config:
+        parallelism: 1
+        failure_action: pause
+        monitor: 5s
+        max_failure_ratio: 0
+        order: stop-first
+
+  estacionamiento:
+    image: ghcr.io/debobravo-code/cesfam-estacionamiento:${IMAGE_TAG:?Configurar IMAGE_TAG}
+    entrypoint:
+      - /bin/sh
+      - /opt/cesfam/iniciar-servicio.sh
+    configs:
+      - source: cesfam-iniciar-servicio-v1
+        target: /opt/cesfam/iniciar-servicio.sh
+        mode: 0444
+    environment:
+      DB_URL: "jdbc:mysql://cesfam-mysql:3306/estacionamiento_db?createDatabaseIfNotExist=true&serverTimezone=America/Santiago"
+      DB_USERNAME: root
+      JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=65.0"
+    secrets:
+      - source: cesfam-estacionamiento-db-password
+        target: db_password
+    networks:
+      cesfam-swarm-network:
+        aliases:
+          - estacionamiento
+    deploy:
+      mode: replicated
+      replicas: 1
+      endpoint_mode: vip
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+      update_config:
+        parallelism: 1
+        failure_action: rollback
+        monitor: 5s
+        max_failure_ratio: 0
+        order: stop-first
+      rollback_config:
+        parallelism: 1
+        failure_action: pause
+        monitor: 5s
+        max_failure_ratio: 0
+        order: stop-first
+
+networks:
+  cesfam-swarm-network:
+    external: true
+
+secrets:
+  cesfam-funcionarios-db-password:
+    external: true
+
+  cesfam-funcionarios-security-password:
+    external: true
+
+  cesfam-presencia-db-password:
+    external: true
+
+  cesfam-presencia-security-password:
+    external: true
+
+  cesfam-notificaciones-api-password:
+    external: true
+
+  cesfam-notificaciones-db-password:
+    external: true
+
+  cesfam-estacionamiento-db-password:
+    external: true
+
+configs:
+  cesfam-iniciar-servicio-v1:
+    external: true
