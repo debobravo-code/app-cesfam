@@ -1,3 +1,4 @@
+
 version: "3.8"
 
 services:
@@ -114,6 +115,11 @@ services:
       - source: cesfam-iniciar-servicio-v1
         target: /opt/cesfam/iniciar-servicio.sh
         mode: 0444
+    ports:
+      - target: 8083
+        published: 9083
+        protocol: tcp
+        mode: ingress
     environment:
       DB_URL: "jdbc:mysql://cesfam-mysql:3306/notificaciones_db?createDatabaseIfNotExist=true&serverTimezone=America/Santiago"
       DB_USERNAME: root
